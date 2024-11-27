@@ -1,0 +1,19 @@
+####################################################################################
+# Doxymple: Doxygen usage example for MPLAB X deployment projects
+# 
+# Description:
+# These project-specific settings will overwrite and/or extend default settings 
+# declared in the doxyfile template configuration, where tags assigned with '=' 
+# will overwrite the original setting while tags assigned with '+=' will extend 
+# the default settings specified in the doxyfile template configuration.
+# 
+# doxyfile template location: .mchp_private/doxygen_src/templates
+#
+####################################################################################
+
+@INCLUDE = Doxyfile-proj.txt
+@INCLUDE = Doxyfile-predefs.txt
+@INCLUDE = Doxyfile-src.txt
+@INCLUDE = Doxyfile-tools.txt
+
+# END OF FILE
