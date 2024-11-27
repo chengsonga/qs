@@ -1,0 +1,40 @@
+/* *********************************************************************************
+ * Online Documentation Qi State Machine sub states Index
+ *
+ * ********************************************************************************/
+
+/**
+
+@defgroup qi-statemachine-sm-ping Qi Ping Phase
+@ingroup qi-statemachine-sm
+@brief Qi Ping sub state functions
+@details
+<div>
+The Qi Ping phase sub state functions are described here.
+</div>
+
+@defgroup qi-statemachine-sm-cfg Qi Configuration Phase
+@ingroup qi-statemachine-sm
+@brief Qi Configuration sub state functions
+@details
+<div>
+The Qi Configuration phase sub state functions are described here.
+</div>
+
+@defgroup qi-statemachine-sm-nego Qi Negotiation Phase
+@ingroup qi-statemachine-sm
+@brief Qi Negotiation sub state functions
+@details
+<div>
+The Qi Negotiation phase sub state functions are described here.
+</div>
+
+@defgroup qi-statemachine-sm-pt Qi Power Transfer Phase
+@ingroup qi-statemachine-sm
+@brief Qi Power Transfer sub state functions
+@details
+<div>
+The Qi Power Transfer phase sub state functions are described here.
+</div>
+
+ */

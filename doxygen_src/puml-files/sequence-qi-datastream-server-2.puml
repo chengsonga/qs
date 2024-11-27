@@ -1,0 +1,46 @@
+@startuml
+participant "Qi State Machine" as SM
+participant "Qi Data Stream" as DS
+participant "Application" as APP
+
+== Server Setup ==
+
+...
+== Data Transfer Start ==
+autonumber "[a0]"
+note over SM, DS
+Qi State PT11:
+The DSR/poll packet is received.
+endnote
+SM -> DS : <font color=blue>QI_Stream_serverSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process DSR/poll packet
+DS -> APP : <font color=magenta>pfOpenCB()
+activate APP
+APP -> APP : Set LEN in Info strucutre and \nreturn buffer address
+APP --> DS
+DS --> SM : Move to state PT15
+deactivate APP
+deactivate DS
+deactivate SM
+...
+note over SM, DS
+Qi State PT15:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_serverGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the DSR/poll packet response\nADC/app, LEN
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+
+...
+== Transmit Data ==
+
+@enduml

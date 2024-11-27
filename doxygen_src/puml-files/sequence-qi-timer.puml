@@ -1,0 +1,47 @@
+@startuml
+participant "System" as SYS
+participant "Qi State Machine" as SM
+participant "Qi Timer Module" as TMR
+participant "Timer User Module" as UM
+
+note over TMR, UM
+Configuration:
+The Timer User Module associates an ID : TMR_ID1 and a
+callback function : UM_TmrCallBack() with the timer module.
+endnote
+
+autonumber "[0]"
+== Initialization ==
+SYS -> TMR ++: <font color="blue">QI_TMR_init()
+TMR -> TMR : Initialize timer internal structures.
+TMR --> SYS --
+
+== Periodic Tick Timer ==
+SYS -> TMR ++: <font color="blue">QI_TMR_updateCounter()
+TMR -> TMR : Update timer counter
+TMR --> SYS --
+...
+
+== Start Timer ==
+UM -> TMR ++: <font color="blue">QI_TMR_startTimer(TMR_ID1, duration)
+TMR -> TMR : Save duration for TMR_ID1
+TMR --> UM --
+...
+
+== Periodic Tick Timer ==
+SYS -> TMR ++: <font color="blue">QI_TMR_updateCounter()
+TMR -> TMR : Update timer counter
+TMR --> SYS --
+...
+
+== Handle Timeout Callbacks ==
+SYS -> SM ++ : <font color="blue">QI_Sm_Task()
+SM -> TMR ++ : <font color="blue">QI_TMR_handleTimers()
+TMR -> TMR : check expired timers
+TMR -> UM ++: <font color="magenta">UM_TmrCallBack(TMR_ID1)
+UM -> UM : callback process
+UM --> TMR --
+TMR --> SM --
+SM --> SYS --
+====
+@enduml

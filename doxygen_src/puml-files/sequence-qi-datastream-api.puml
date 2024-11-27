@@ -1,0 +1,99 @@
+@startuml
+participant "System" as SYS
+participant "Qi State Machine" as SM
+participant "Qi Data Stream" as DS
+participant "Application" as APP
+
+== Initialization ==
+note over SM, DS
+Initialization API call sequence examples are shown below.
+endnote
+autonumber "[s0]"
+activate SYS
+SYS -> SM : Initialize \n State Machine
+activate SM
+SM -> DS : <font color=blue>QI_DS_Init()
+activate DS
+DS -> DS : Initialize channels
+DS --> SM
+deactivate DS
+SM --> SYS
+deactivate SM
+
+SYS -> APP : Initialize \nApplication
+activate APP
+APP -> DS : <font color=blue>QI_DS_SetBufferSize() 
+activate DS
+DS -> DS : Save buffer sizes
+DS --> APP
+deactivate DS
+APP --> SYS
+deactivate APP
+deactivate SYS
+...
+== Data Transfer ==
+note over SM, DS
+The callbacks to application during data transfer between PRx and PTx, 
+applicable to both client and server scenarios.
+endnote
+autonumber "[d0]"
+APP -> DS : <font color=blue>QI_DS_Open()
+activate APP
+activate DS
+DS -> DS : save application status
+DS --> APP
+deactivate DS
+deactivate APP
+
+...
+note over SM, DS 
+Receive packet to open data stream
+endnote
+SM -> DS : Open Data Stream
+activate SM
+activate DS
+DS -> APP : callback : <font color=magenta>pfOpenCB()
+activate APP
+APP --> DS
+deactivate APP
+DS --> SM
+deactivate DS
+deactivate SM
+
+...
+note over SM, DS 
+Receive first data packet
+endnote
+SM -> DS : Process Data Packet
+activate SM
+activate DS
+DS -> DS : process packet
+DS --> SM
+deactivate DS
+deactivate SM
+...
+note over SM, DS 
+Process intermediate data packets.
+If there are no errors, application callbacks not called.
+endnote
+...
+note over SM, DS 
+Receive last data packet
+endnote
+SM -> DS : Process last data packet
+activate SM
+activate DS
+DS -> APP : callback : <font color=magenta>pfSuccessCB()
+activate APP
+APP --> DS
+deactivate APP
+DS -> APP : callback : <font color=magenta>pfCloseCB()
+activate APP
+APP --> DS
+deactivate APP
+DS --> SM
+deactivate DS
+deactivate SM
+====
+
+@enduml

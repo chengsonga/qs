@@ -1,0 +1,4 @@
+@INCLUDE = ../doxy-config/Doxyfile-proj.txt
+@INCLUDE = ../doxy-config/Doxyfile-src.txt
+@INCLUDE = ../doxy-config/Doxyfile-ver.txt
+@INCLUDE = ../doxy-config/Doxyfile-tools.txt

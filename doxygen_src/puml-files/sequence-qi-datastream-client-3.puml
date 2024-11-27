@@ -1,0 +1,68 @@
+@startuml
+participant "Qi State Machine" as SM
+participant "Qi Data Stream" as DS
+participant "Application" as APP
+
+== Client Setup ==
+...
+== Data Transfer Start ==
+...
+== Receive Data ==
+autonumber "[b0]"
+note across
+Qi State PT11:
+The ADT packet is received.
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process ADT packet \n(even/odd)
+DS --> SM : Move to state PT13
+deactivate DS
+deactivate SM
+...
+note across
+Qi State PT13:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the ADT packet response
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+
+...
+note across
+Qi State PT11:
+The last ADT packet is received.
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process ADT packet \n(even/odd)
+DS --> SM : Move to state PT13
+deactivate DS
+deactivate SM
+...
+note across
+Qi State PT13:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the ADT packet response
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+
+
+@enduml

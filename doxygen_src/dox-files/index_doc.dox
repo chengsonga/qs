@@ -1,0 +1,323 @@
+/* *********************************************************************************
+ * Online Documentation Qi Stack Architecture Index
+ *
+ * Define Index Entries here by declaring groups. These group labels are referenced 
+ * in comment blocks of the source files to group topics under these index entries
+ *
+ * ********************************************************************************/
+
+// First level headers
+/**
+
+@defgroup qi-architecture  Qi Stack Architecture
+@brief The architecture of Qi stack.
+
+@internal
+ For details, see : details_qi_architecture.dox
+@endinternal
+
+
+@defgroup qi-configuration  Qi Stack Configuration
+@brief The configurable items of the Qi Stack
+@details
+    This section captures all peripheral assignment as well as configurable items of the Qi stack. '"qi_project_peripheral_defines.h"' captures all peripheral 
+  assignment from ADC channels to coil mux I/O drive ports where as '"qi_project_parameter_defines.h"' captures all Qi stack configurable items. This allows the 
+  application to easily scale based on specific hardware / features.     	
+
+  ----------------------
+  <b> Peripheral Assignments </b>\n 
+  When starting a new project, it is important to properly map the peripherals being used in the application. This peripheral assigment captures all input and
+  output pin mapping required by the Qi stack. Several of these items do not need to be changed (i.e. SCCP channels) but options are there to reconfigure as
+  needed to work within the application. For other modules, inverter PWM generators, ADC feedback networks, ADC trigger sources, coil mux, and DDM I/O ports
+  are all assignable here. Some important notes for new designs:\n 
+  - Coil voltage / current should be on a dedicated ADC core as digital filter is used and the channel is sampled multiple times within one PWM period
+  - Coil feedback for Q-measurement should be on an ADC + CMPx pin options
+  - Coil voltage trigger source should align to proper PWM generator being used
+  
+  
+  ----------------------
+  <b> Qi Stack Configuration </b>	\n 
+  The Qi stack configurable itemes have been grouped into the following Modules: Configuration, Hardware abstraction, Object Detection, Timing Parameters, and 
+  Inverter Configuration. These five modules are resposible for configuring the system to align to specific project needs/features. Detailed description on 
+  what's included in these modules:\n
+  - Configuration: Includes high-level system features like number of coils, Qi specification to align to, fast charging options, etc.
+  - Hardware abstraction: Feedback circuit gains that allow system to convert ADC reading back to real units
+  - Object Detection: Includes open-air tank characterization defaults, Q-FOD quadratic equations, Ploss FOD thresholds, etc.
+  - Timing Parameters: Qi spec packet timings, FSK timings/options, End power transfer timings, etc.
+  - Inverter Configuration: Ping operating state, PTx capabilities (power), etc.
+
+  
+  
+  
+@defgroup qi-core Qi Core Functions
+@ingroup qi-architecture
+@brief Core functions used by Qi Stack
+@details
+    The core folder structure includes critical Qi components such as Qi stack initialization, PID controller and state-machine, data acquisition (ADC interrupts), 
+  analog ping tank measurements (quality factor / reference frequency), and executing Qi scheduled tasks. This folder also contains some not so critical FW 
+  components such as FW versioning and debug packet handler. These core components are described in more detail here: 
+
+  <b> Qi Initialization </b>
+  
+  The application is responsible for calling #Qi_Main_Init() during the initialization of application modules to prepare/setup the Qi stack for operation. This 
+  function will initialize global and file scope variables used throughout the Qi stack, pre-initialize calibration data, setup the main Qi stack 
+  state-machine, and configure the peripherals used by the Qi stack.
+  
+  <b> Qi State Machine Task </b>
+  
+  In order to execute the Qi stack state-machine, Qi_Main_Task() needs to be called in a background task of the scheduler. This function will call the main stack 
+  state machine if local Qi State machine run flag is true. The Qi stack can be enabled/disabled by the application at any time using provided APIs. By default, 
+  the state machine is disabled and Qi_Main_Statemachine_Start() needs to be called after application is up and running to start the stack. 
+     
+  <b> Qi Data Acquisition </b>
+  
+  Another core component is the interrupt handler(s) for capturing real-time data from the application. Critical signals are sampled at fairly high sampling
+  rates and used for control, power loss, and most importantly demodulation. These interrupt service routines are typically tied to the Analog-to-Digital converter
+  data conversion complete signals (or digital filter) with the result being stored in global variables or passed into the DDM filters. The Qi stack automatically
+  enables the ADC channels/interrupts/filters/etc. based on inputs from the qi_project_peripheral_defines. 
+  
+  <b> PID Controller </b>	
+  
+  Power regulation is a core component that falls outside of the main Qi stack state machine and for that reason has been placed in this folder directory. The
+  PID controller has it's own sub-state state machine and is continuously called from the high-level Qi state machine when in proper state (Power Transfer State 12).
+  The PID controller may be a simple voltage mode controller for rail controlled topologies or a more sophisticated multi-mode controller where phase, frequency,
+  and duty cycle is modulated. In these instances, changing out the PID for different topologies if pretty straightforward as qi_pidComp.h / qi_pidComp.c files are modular 
+  allowing PID controller itself to be swapped out. 
+  
+  <b> Quality Factor </b>	
+  
+  The Qi stack includes routines for energizing the inverter and measuring quality factor / resonant frequency of the system. This information is used for object
+  detection and for foreign object detection. 
+  
+  <b> Packet Structure/Timing Analysis </b>	
+  
+  The Qi stack includes a sophisticated debugging interface that can be connected to communications peripheral such as UART, to read out packet information 
+  (data/timing), error codes, packet timeouts, propriatary or invalid packet handling, as well as transmitted data. This core debugging tool is useful for new
+    feature development, resolving compliancy issues, etc. 
+  
+@defgroup qi-statemachine Qi Statemachine Functions
+@ingroup qi-architecture
+@brief Qi statemachine information
+@internal
+ For details, see : details_qi_statemachine.dox
+@endinternal
+
+@defgroup qi-comms Qi In-band Communication Functions
+@ingroup qi-architecture
+@brief Qi In-band Communication Functions 
+@details
+    Qi In-band communication functions captures the implementation details for amplitude shift key and frequency shift key used for bidirectional communication 
+  with a Qi certified reciever. The below simplified state machine and interrupt/task handlers contain different elements for supporting ASK/FSK. The state
+  transitions are a small subset within one Qi state, i.e. Power Transfer Phase. This logic is duplicated in various states within the Qi state-machine to 
+  process ASK/FSK when required.
+  
+  Note: FSK is only required when communicating with an extended power profile receiver or a propriatery fast charge implementation.
+
+<p>
+  <center>
+    <img src="images/Simplified_ASKFSK.png" alt="" width="1200"/>
+  </center>
+</p>
+<p><center><i> Simplified Model for ASK/FSK  </i></center></p>	  	
+
+@defgroup qi-dataStream Qi Data Transport Streams
+@ingroup qi-architecture
+@brief Qi Data Transport Stream Functions
+@internal
+ For details, see : details_qi_datastream.dox
+@endinternal
+  
+@defgroup qi-calibration Qi Calibration Functions
+@ingroup qi-architecture
+@brief Qi Calibration functions 
+@details
+    The Qi stack includes calibration APIs with set/get functions for different calibration equations and handling of special parameters. All feedback channels 
+  have an associated linear equation for converting ADC counts back to real units to be used throughout the application. Coil parameters such as Q-equations,
+  power loss, etc. use quadratic equations for better curve fitting. All coefficients for all equations are stored in local structures and access to this data
+  is described in this section. All equations are initialized with default data but can be overwritten with individual calibration data if desired after Qi
+  stack initialization is completed.
+  
+  -----------------------------------------------------
+  <b> Linear Equations </b>
+  
+  The image below captures the inverter current feedback network and derives the linear equation for converting the ADC counts to milli-Amps. Slope and offset 
+  parameters are of type Q15 (-32768 to 32767) so if slope value is outside range, slope must be divided by 2^n until within limits with the exponent term being 
+  scaled accordingly. As an example, suppose inverter current was 1A (844 counts),  #Qi_Calib_getAdjusted() can be called, passing in the 844 counts and parameter 
+  ID for inverter current (#CALIB_I_INPUT) and the result would be returned as 1000 counts or 1000mA.
+  
+  Slope term is calculated by inverse gain but since it is desired to have the value in mA, the slope factor is scaled by 1000. For this example, slope factor
+  in Q15 equals \f$\ 32767 \times \frac{1000}{20m\times 34 \times 1241} \f$ which is 38829 counts. Since this is greater than 32767, slope factor is divided 
+  by 2 and scaler handles the post multiplier.
+  
+  The result, a linear equation: Iinv_mA = ((Iinv_counts x Iinv_slope_Q15) >> Iinv_exp + Iinv_slope, --> 844 x 19416 >> 14 = 1000mA. 
+  
+<p>
+  <center>
+    <img src="images/feedbackScaling.png" alt="" width="1200"/>
+  </center>
+</p>
+<p><center><i> Example Inverter Current Feedback Scaling  </i></center></p>	 
+  
+  
+  -----------------------------------------------------
+  <b> Quadratic Equations </b>
+  
+  This stack also supports APIs for handling quadratic equations \f$\ y = ax^2 + bx + c \f$ which have been used for coil power, quality factor, Q-min thresholds, 
+  etc. Typically coil power and Q-equations are specific for given coil so the number of parameters supporting quadratic equations will scale with #NUM_COILS. 
+  Coil power equations can be static for the application or can be calibrated parameters that are stored in Flash. Quality factor equations are typically static 
+  but hooks are in place to update these parameters from calibration space (Flash) as well. 
+  
+  A general function #Qi_CalibPoly_calcFactor() is provided for determining the quadratic result for a given input. For each quadratic equation, five separate
+  terms are required; three coefficients plus a shift (scaling) factor for both quadratic and linear terms. Data type #calpolynomial_t can be used to group all
+  coefficients into one stucture. This equation has been derived to support the tenths decimal place without requiring the use of float/double arithmetic. This 
+  requires that the input/output is scaled by 10x. For example, a Q result of 40.2 would be stored and passed in as 402. The output result would be of similar 
+  scale. To use this function without the 10x scaling, simply multiply the quadratic coefficient by 10x. 
+
+  The example below captures a typical Q curve where Q measured on the transmitter is mapped against Q measured with MP-A1 coil. The curve fitting equation of 
+  the x-y scatter plot is shown and the details on how coefficients are scaled and stored is shown as well. Notice the constant is scaled by 10x to account for
+  the input/output formatting. If the scaling is not reqired, then for this equation, quadratic coefficient would become 10,780 and constant changes to 17.  
+  
+<p>
+  <center>
+    <img src="images/quadEquation.png" alt="" width="1200"/>
+  </center>
+</p>
+<p><center><i> Example for Using Quadratic Equation  </i></center></p>	 	
+  <br>
+  A separate function, #Qi_CalibPoly_calcPower() is used for power loss curve fitting where the scatter plot is typically current in amps plotted against coil 
+  power in milli-watts. This specific implementation is similar to #Qi_CalibPoly_calcFactor() but instead of 10x scaling factor, the equation takes care of the 
+  conversion of passing mA into the function (1000x scaling). This is done for a number of reasons such as; better resolution on curve fitting equations, FW 
+  already using current in mA, etc.. This function is very specific and meant to be handled knowing input/output scaling. 
+  
+  -----------------------------------------------------
+  <b> Calibration Parameters </b>
+  
+  There are a number of parameters that also need to be initialized/set for the application such as: power loss thresholds, open-air Q, resonant frequency/avg 
+  peaks, duty cycle for Q measurement, etc. These parameters are also initialized at startup with default data but can also be overwritten with calibrated data.
+  Open air Q / resonant frequency type data is typically auto-calibrated per board with data being stored to Flash. Other parameters are typically static but 
+  firmware includes hooks to pull in from calibration routines if required. 
+  
+  
+@defgroup qi-timers Qi Timer Functions
+@ingroup qi-architecture
+@brief Qi Timer functions 
+@details
+    The timer folder within the Qi stack contains source and header files for software timers that can be used for handling various timing related events within 
+  Qi standard. The stack includes two types of timers, short range timers and long range timers. The short range timers are used for events that occur less than 
+  ~30 seconds and have a resolution of 1ms. The long range timers have a 1sec. resolution and can support events up to ~9hrs. For events longer then supported 
+  by the long range timer, #QI_TMR_startLongTimer() can be called again within the timers callback to restart an event. This requires some additional application 
+  knowledge to keep track of the number of restart events though. 
+
+  The Qi stack uses several short range timers for packet timeouts, FSK response, restart timings, etc. To use the timers, #QI_TMR_handleTimers() must be called
+  periodically (background task) to check the timeout events and call callback functions, and #QI_TMR_updateCounter() must be called in a real time 1ms task. 
+  This update counter function updates the internal timer tick variables used in Qi timers. 
+  
+  The stack currently utilizes one long range timer for PTx/PRx fault events that require stopping power transfer from occurring for an extended time period.
+  For this timer to operate, update counter function mentioned above must be implemented. Within this function there is an update long range timers function 
+  that is called every 1000 ticks and from here the handle long range timers function is called.  
+  
+  There are start/stop/active APIs for each type of timer that are being used throughout the project. For application implementing sleep functions, there is
+  #QI_TMR_AdjustCounterSleep() which allows jumping the timer ticks ahead to keep timing of any active timer intact. To add timers to the project, add timer ID 
+  to #QI_TIMER_IDS_e, add timer call back function pointer in order of enum (QI_TMR_CALLBACK_FUNCS), add function and start/stop APIs to enable the timer. 
+
+  <div>
+    <p>The following sequence diagram shows the timer module usage in the Qi Stack.</p>
+    <div class="qiImage">
+      <center>
+        @startuml{puml-seq-qi-timer.png}
+          scale .95
+          !include ../puml-files/sequence-qi-timer.puml
+        @enduml
+      </center>
+      <p><center><i>Sequence Diagram : Timer Function Calls </i></center></p>	  	
+    </div>
+  </div>
+
+@defgroup qi-defines  Qi Generic Module Defines	/ Data Types
+@ingroup qi-architecture
+@brief  Transmitter/Stack specific macro definitions and data types
+@details
+    The header files included in the defines folder for the Qi stack include different macros, sturctures, enums for general Qi stack data types and definitions.
+  
+  
+@note
+  The peripheral and parameter defines are redirecting to projects config folder for getting configuration data for the Qi stack. If these actual defines files
+  are moved to another location, these redirect includes need to be updated to match file location.  
+
+@defgroup qi-driver  Qi Stack Driver
+@ingroup qi-architecture
+@brief  Different drivers for Qi stack 
+@details	
+  Driver folder consists of header and source files used for configuring the microcontroller peripherals, driving the coils in a multi-coil transmitter, operating 
+  status of PRx/PTx, etc. High-level peripheral assignment is performed at application layer and can be found here: @ref qi-configuration  "Qi Stack Configuration"
+  These peripheral drivers contain set/get APIs for reading/setting SFRs within the application. These APIs can be used outside of the Qi stack by 
+  including the specific header files in source files accessing these peripheral functions. The Qi stack only requires a handful of peripherals to operate. The
+  PWM module, ADC module, and SCCP modules are the core components for driving the inverter, data acquistions, and digital demodulation. Changes to these modules
+  may result in improper performance. 
+
+@defgroup qi-driver-periph  Qi Peripheral Driver
+@ingroup qi-driver
+@brief  Peripheral drivers
+@details
+    Peripheral configuration may vary based on transmitter topology and dsPIC33C device used. As Qi stack can operate semi-stand-alone (based on topology) or as 
+  part of a larger system, certain core components for modules such as ADC/PWM have been configured by the Qi stack. If application overrides this initialization 
+  unpredictable results may occur. 
+  
+  Starting from the qi_project_peripheral_defines_temp.h template file, mapping of critical Qi peripherals such as PWM generators for inverter drive, ADC 
+  channels for feedback, coil selection mux, digital demodulation, etc. can all be assigned based on application usage. Reminder, the template file should be 
+  copied to the config folder and renamed without the _temp. 
+
+  @cond PROJECT_SETTING_DUAL_CORE
+@addtogroup qi-MSI
+  <p>
+  <center>
+    <img src="images/MSI_overview.png" alt="" width="1200"/>
+  </center>
+</p>
+<p><center><i> Main-to-Secondary Core Interface Implementation  </i></center></p>	
+@endcond
+
+@defgroup qi-driver-receiver Qi Operating State
+@ingroup qi-driver
+@brief Qi Operating State of PTx/PRx Operation
+@details
+    Set/Get functions for operating state of transmitter/receiver to be used by application. 
+  
+  Some wireless transmitters may implement the red/yellow/green Qi LED operations as defined in earlier Qi specifications for indicating system operating 
+  states to the user. The following implementation may be used when these LEDs are defined in the application:
+     
+  - Mobile Device is Detected                        Green (ON)         
+  - Mobile Device is Charging or in Power Transfer   Green (BLINK)          
+  - Mobile Device is Fully Charged                   Green (ON), Yellow (ON)          
+  - Error, Fault or FOD                              Red (ON) 	
+  
+  The state is used/set within the Qi Stack and can always be read. The application is responsible for creating an LED driver, LED task (1 second is sufficient), 
+  and abstracting the state from the Qi stack to be displayed on LEDs. See drv_qiOpStatusPRx.h for more information on the implementation details. Additional states 
+  can be added in the future by expanding the enum. 	
+  
+@defgroup qi-core-coil-drv Coil/Inverter Driver
+@ingroup qi-driver
+@brief Drivers for coil mux and inverter states
+@details
+    Functions for driving coils in a multi-coil solution as well as a few functions for driving the inverter. 
+  
+@defgroup qi-external Qi External Dependencies Functions
+@ingroup qi-architecture
+@brief Qi External functions 
+@details
+<div>
+  This section describes the external dependencies of the Qi Stack module. The external dependencies
+  need to be supplied by the application for proper compilation and working of the Qi Stack.
+  <br>
+  Most of these dependencies have just substitute function names. A function which proper prototype should 
+  be implemented and then should be supplied in the extern files for the use of Qi Stack functions.
+
+  <h3 class="qiSub1">External Includes</h3>
+  All the include files which are to be included in the Qi Stack, but not belong to Qi Stack should be 
+  included in the "extern\qi_project.h". This file acts like a container file which is included in the 
+  different Qi Stack modules.
+</div>
+    
+*/
+
+

@@ -1,0 +1,133 @@
+/** 
+@addtogroup qi-statemachine
+@details
+<div>
+  <h2 class="qiMain">State Machine Design</h2>
+  The state machine is one of the central component of the Qi Stack. This component takes care of 
+  implementing the requirements of Qi Specifications. The state machine implementation closely follows the specifications so that any future
+  updates to the specifications are easy to incorporate in the implementation.
+
+  The state machine should be invoked periodically in a co-operative task. All the state transitions are
+  managed inside the state machine. The timeout error and packet handling in different states is also
+  managed entirely within the state machine. The actual reception and transmission of the packets are 
+  not handled. State machine depends on communication modules to perform these tasks.
+
+  <div>
+    <p>
+      <center>
+        <img src="images/QiStateMachine-overview.png" alt="" width="1000"/>
+      </center>
+    </p>
+    <p><center><i> <a name="fig-qi-statemachine">Qi State Machine  </a></i></center></p>	  	
+  </div>
+
+  <div>
+    The <a href="#fig-qi-statemachine">figure </a> shows the details of the state machine along with its levels and states.
+    <div>
+      <h3 class="qiSub1">Levels</h3>
+      The state machine rsponsibilities are split in to three levels.
+
+        <h4 class="qiSub2"> Level 1</h4>
+        This level is responsible for maintaining the global state of the state machine.
+        - Maintains the global state of the state machine.
+        - Initializes the state machine after reset/restart and after fault recovery.
+        - Provides possibility to change the state (via state machine APIs).
+        - Provides features like - possibility to wait before changing to next state etc.
+        - Knows nothing about what is actually done in each state.
+        
+        <h4 class="qiSub2"> Level 2</h4>
+        This level is responsible for managing the state transitions between different states of the state machine.
+        - Knows which sub state handler to call (like P1 handler/ N7 handler etc) based on current state (which is maintained in Level 1).
+        - Based on the return value of the sub state handler (in Level 3), 
+          - decides if state change is required or not.
+          - if so, then decides what should be the next state.
+        - Knows the Level 1 API to be invoked to perform the state change.
+        - Invokes the sub state initialization function during the state transitions whenever required.
+          - The N7 (Negotiation) state can be reached either dure Negotiation phase or Re-Negotiation phase. <br>In such situation the Level2 handler invokes different initialization functions.
+        - Knows nothing about the actual functionality that is done in the sub state line P1, N7 etc.
+        
+        <h4 class="qiSub2"> Level 3</h4>
+        This level is responsible for executing the functionality in each state. 
+        The state handlers handle the timeouts, process packets, send the acknowledgement or response in these states.
+        - Implements the functions required to achieve the purpose of the substate. The actual Ping, Negotiation etc phase features are implemented in Level 3.
+        - Adhere to the requirements of APIs defined by Level 2. <br>By this means the feedback regarding the processing is provided to Level2 after executing the state handler.
+        - Can maintain its own state locally and manages local state transitions. <br>The state handler functionality requires a stete machine itself. This state machine is managed entirely in the state handler.
+        - Invokes the fault handler in case of faults.
+        - Provides the state specific timeout error callback functions.
+        - Provides the state specific packet handler functions.
+        - Knows nothing about previous state and future state of the state machine. This is known only at Level 2.
+
+    </div>
+    <div>
+      <h3 class="qiMain">States and State Handlers</h3>
+      The following table shows the relation between the different states and state handlers.
+        <p>
+          <!--center-->
+            <p><i> <a name="tab-qi-statemachine-states">States and State Handlers: </a></i></p>
+            Phase | Qi State| State Handlers <br>(Level 3)|Description
+            :------:|:-------:|:--------------------------:|------------
+            Ping|0|P0| Implements analog ping and digital ping, coil selection etc
+            ^|1|P1| Provides packet handler for SIGNAL packet 
+            ^|F|Fault Handler| Provides the fault handling and recovery functionality.<br> This state can be invoked from any other state in case of faults.
+            Configuration|2|C2| Provides packets handlers (ID, XID, CFG etc) <br> Decision on BPP or EPP modes of operation
+            ^|3|C3| ^
+            ^|4|C4| ^
+            ^|5|C5| ^
+            ^|6|C6| ^
+            Negotiation|7|N7| Provides packet handlers (FOD, GRQ, SRQ etc) <br> Establishes the power transfer contract (EPP/BPP) <br> Saves the receiver's capabilities
+            ^|8|N8| ^
+            ^|9|N9| ^
+            ^|10|N10| ^
+            Power Tranfer|11|PT11| Provides packet handlers (CE, RP) <br> Manages Re-Negotiation if required <br> Responsible for Digital Power Control <br> Handles data transport stream packets if supported
+            ^|12|PT12| ^
+            ^|13|PT13| ^
+            ^|14|PT14| ^
+            ^|15|PT15| ^
+          <!--/center-->
+          Note: The numbers "0" to "15" indicate the states as defined in Qi Specifications.
+        </p>
+    </div>
+    <div>
+      <h2 class="qiMain">Flow</h2>
+      Following describe in brief the steps involved in execution of the state machine.
+      <p>
+        <!--center-->
+          <p><i> <a name="tab-qi-statemachine-steps">Qi State Machine Flow Steps : </a></i></p>
+          Step | Description
+          :---:|-------------
+          1|The co-operative scheduler invokes the Qi Stack Main Task.
+          2a|The main task checks if any timeout error is flagged. <br>If so, then the corresponding call back function corresponding to active state (Level 3) is invoked.
+          2b|The main task checks if any packets are received from the communication module. <br>If so, the corresponding packet handler for the state is invoked (Level 3).
+          2c|The main task invokes the state handler (Level 2).
+          3a|Timeout callbacks in Ping Phase (one of states - "0" or "1")
+          3b|Timeout callbacks in Configuration Phase (one of states - "2", "3", "4", "5", "6")
+          3c|Timeout callbacks in Negotiation Phase (one of states - "7", "8", "9", "10")
+          3d|Timeout callbacks in Power Transfer Phase (one of states - "11", "12", "13", "14", "15")
+          4a|Packet handler function call in Ping Phase (one of states - "0" or "1")
+          4b|Packet handler function call in Configuration Phase (one of states - "2", "3", "4", "5", "6")
+          4c|Packet handler function call in Negotiation Phase (one of states - "7", "8", "9", "10")
+          4d|Packet handler function call in Power Transfer Phase (one of states - "11", "12", "13", "14", "15")
+          5a|State handler function call in Ping Phase (one of states - "0" or "1")
+          5b|State handler function call in Configuration Phase (one of states - "2", "3", "4", "5", "6")
+          5c|State handler function call in Negotiation Phase (one of states - "7", "8", "9", "10")
+          5d|State handler function call in Power Transfer Phase (one of states - "11", "12", "13", "14", "15")
+          5e|State handler invokes the fault handler in case of active faults.
+          6|Any of the state handlers (Level 3) can invoke the fault state in case of faults.
+
+        <!--/center-->
+        Note: The numbers "0" to "15" indicate the states as defined in Qi Specifications.
+      </p>
+
+      <h4 class="qiSub2">Flow Example</h4>
+      The following diagram shows the steps followed when a SIG packet is processed in Ping 1 state.
+        <p>
+          <center>
+            <img src="images/QiStateMachine-flowExample.png" alt="" width="600"/>
+          </center>
+        </p>
+        <p><center><i> <a name="fig-qi-statemachine-flow-eg">Qi State Machine Flow Example  </a></i></center></p>
+    </div>
+  </div>
+</div>
+
+*/

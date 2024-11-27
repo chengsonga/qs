@@ -1,0 +1,381 @@
+/* *********************************************************************************
+ * Online Documentation Qi State-Machine Index
+ *
+ * ********************************************************************************/
+
+/**
+
+@defgroup qi-statemachine-sm Qi State-Machine 
+@ingroup qi-statemachine
+@brief Qi State Machine Implementation details.
+@details
+<div>
+  The state machine functions described in these sections implement the behaviour corresponding
+  to Level 1 and Level 2, as described in the section @ref qi-statemachine "Qi State Machine".
+  <br>
+  The Level1 and Level 2 state machine functions take care of maintainig the state of the state machine
+  and handle the transition between different states.
+  <br>
+  The Level 3 functions are responsible for implementing the actual functionality are described
+  in respective sections.
+
+  <h3 class="qiSub1"> State Machine Function Calls </h3>
+  <p>
+    The following picture shows the interaction of different components of the state machine using the 
+    functions calls described in this section.
+    <br> As an example, the state change from the Ping 1 to Configuration 2 state on successful
+    processing of the SIG (Signal) packet is shown. The state machine behavior in other states follows 
+    the same processing.
+  </p>
+  <div class="qiImage">
+    <center>
+      @startuml{puml-seq-qi-sm-stateChange.png}
+        scale .95
+        !include ../puml-files/sequence-qi-sm-stateChange.puml
+      @enduml
+    </center>
+    <p><center><i>Sequence Diagram : Qi State Machine Function calls </i></center></p>	  	
+  </div>
+
+</div>
+
+
+@defgroup qi-statemachine-ping Analog/Digital Ping
+@ingroup qi-statemachine
+@brief Analog and Digital Ping Implementation
+@details
+<div>
+  Ping phase is used by PTx to check if any PRx is in the range and trying to connect to the PTx for charging.
+  The PTx keeps "pinging" the field till a PRx is identified.
+
+  The Ping handlers implementation follows the Qi Specifications, Ping Phase States. 
+  The following is the data exchange that happens in the Ping phase.
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-ping-dataflow.png" alt="" width="600"/>
+      </center>
+    </p>
+    <p><center><i> Qi Ping Phase Dataflow  </i></center></p>
+  </div>
+  Following states are used to perform these data transfers.
+
+  The following state diagram shows the overview of the state transitions in Ping Phase.
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-ping.png" alt="" width="800"/>
+      </center>
+    </p>
+    <p><center><i> Qi Ping Phase State Diagram  </i></center></p>
+  </div>
+</div>
+
+<div>
+  <br><b><i>State 0</i></b><br>
+  State 0 is the first state of the protocol. The Power Transmitter (PTx) switches to this state after 
+  completing its power-up initialization functions. In this state, the Power Transmitter (PTx) attempts 
+  to detect the presence of a Power Receiver(PRx), NFC cards, RFID tags, and Foreign Objects.
+
+  <br><b><i>State 1</i></b><br>
+  State 1 is the first state of the protocol in which the PRx participates actively. The PRx sends the SIG
+  packet indicating the strength of the signal it is receiving.
+
+  <br><b><i>State F</i></b><br>
+  In state F, the Power Transmitter resolves any fault condition that can occur in execution of the protocol.
+  The Power Transmitter can reach this state from any of the other protocol phases.
+  The details of this state are covered in @ref qi-statemachine-fault "Ping Fault Handler".
+
+  <br><i>Implementation:</i><br>
+  The actual implementation of coil selection, analog ping, digital ping around a low power requirement deviates a bit from the Qi Specifications. In this approach,
+  analog ping involves energizing the tank of the inverter, measuring Q and resonant frequency to decide if an object is on the interface surface. This is done
+  as fast as possible to limit the average power consumption of the transmitter when in standby state. After the sweep of all coils, if no object is detected, 
+  the transmitter returns to sleep state where duration (~500ms) is project specific. 
+  <br>
+  If an object is detected, the transmitter proceeds to digital ping to see if this may be a receiver and the first active coil is captured/stored. The remaining 
+  coils are swept looking for an object/PRx and if detected, digital ping state is again entered. Lastly, the transmitter will jump back to the first coil were 
+  an object was detected and again ping that coil. This is due to the fact that the object may have just entered the field when ping occurred and wasn't actually 
+  flat on the interface surface. After all coils have been checked, the transmitter selects the coil that received the largest signal strength packet. 
+  <br>
+  After the sweep, if an object was detected but the transmitter did not receive a SIG packet, an FO counter is incremented and the transmitter enters sleep. If 
+  this cycle continues to occur and exceeds #PING_OBJ_DETECT_CNT counter threshold and a PRx is finally placed on the interface surface, the transmitter will 
+  flag and FOD event and will not proceed past digital ping phase. The object needs to be removed from interface surface before proceeding past digital ping.  
+  <br>
+  Further details are provided in this flow diagram.
+  <p>
+    <center>
+      <img src="images/lowPowerPing.png" alt="" width="1200"/>
+    </center>
+  </p>
+  <p><center><i> Low Power Ping Implementation Diagram  </i></center></p>
+</div>
+    
+@defgroup qi-statemachine-fault	Ping Fault Handler
+@ingroup qi-statemachine
+@brief Qi Fault Handler
+@details
+The fault handler within the Qi stack resolves any fault conditions that has occurred during execution of the Qi protocol. This fault handler includes its own 
+substates for processing/handling the steps to restart power to the receiver. The following scenarios can cause Qi protocol to jump to fault state:
+    - Time out on data packet 
+    - Receiver sends End Power Transfer data packet (may not necessarily mean fault occurred)  
+    - Transmitter detects protocol error such as illegal packet
+    - Foreign Object Detection (Q, Ploss, Object Detection)
+    - Internal reasons such as over temperature, power, etc.
+
+The fault handler removes power signal after #T_FAULT_REMOVE_PWR milli-seconds and will disable certain peripherals/interrupts/etc. before waiting #T_RESET 
+milli-seconds to check fault condition. Timing before next ping event depends on the reason for entering the fault handler. The handler will start a Qi timer 
+(#QI_TMR_FAULT_DELAY_TIMEOUT) whose callback will handle transitioning to the next substate. It is possible that a long range timer (#QI_LONG_TMR_RESTART) is
+also enabled which allows state-machine to exit fault state but prevent transmitter from proceding past digital ping. As long as the timer is active and the PRx
+remains on the interface surface, proceeding past digital ping is blocked. Once PRx is removed, this timer is cleared and the next time a PRx is placed, the 
+transmitter proceeds as normal.   
+
+After short range timer expires, the fault handler will fetch error code, QI_Sm_getError() and clear all error/comm/timeout flags required to start reping event. 
+For debugging, the Qi stack will use Qi_Sm_setError() for logging the shutdown reason which is then displayed on the console when exiting fault handler. The Error
+code is printed as defined in enum #QI_STATE_ERRORS_t and is either printed with generic Error code message or in case of packet timeout, Packet timeout message.
+Lastly, the fault handler, resets internal sub-state to init state and returns as fault has been resolved. 
+
+
+@defgroup qi-statemachine-config Configuration States Handlers
+@ingroup qi-statemachine
+@brief Qi Configuration Phase state handlers Implementation.
+@details
+<div>
+  The Configuration phase is used to identify the PRx to the PTx and to agree on a protocol variant (BPP/EPP)
+  to use for further power tranfer.
+  <br>The Configuration handlers implementation follows the Qi Specifications, Configuration Phase States. 
+  Following shows the data exchange in this phase.
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-config-dataflow.png" alt="" width="600"/>
+      </center>
+    </p>
+    <p><center><i> Qi Configuration Phase Dataflow  </i></center></p>
+  </div>
+  Following states are used to perform these data transfers.
+
+  <br><b><i>State 2</i></b><br>
+  In state 2, the Power Receiver (PRx) identifies itself to the Power Transmitter(PTx). The PRx sends the 
+  necessary packets (ID/IDx) to provide its identification.
+
+  <br><b><i>State 3</i></b><br>
+  In state 3, the Power Receiver provides optional extended identification data using XID data packet.
+
+  <br><b><i>State 4</i></b><br>
+  In state 4, the PRx provides the elements of the baseline Power Transfer Contract to the PTx.
+
+  <br><b><i>State 5</i></b><br>
+  In state 5, the PTx verifies the Count field of the received CFG data packet for validating the number
+  of Power Transfer Contract parameters received in other states.
+
+  <br><b><i>State 6</i></b><br>
+  In state 6, the Power Transmitter decides whether to use the Baseline Protocol or the Extended Protocol.
+  
+  The following flow diagram shows the overview ofthe state transitions in Configuration Phase.
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-config.png" alt="" width="800"/>
+      </center>
+    </p>
+    <p><center><i> Qi Configuration Phase State Diagram  </i></center></p>
+  </div>
+</div>
+
+@defgroup qi-statemachine-nego Negotiation States Handlers
+@ingroup qi-statemachine
+@brief Qi Negotiation Phase state handlers Implementation.
+@details
+<div>
+  The negotiation phase is the part of the Extended Protocol in which the Power Transmitter and 
+  Power Receiver can make changes to the Power Transfer Contract.
+  <br>The Negotiation handlers implementation follows the Qi Specifications Negotiation Phase States.
+  The following picture shows the overview of the data flow in this phase.
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-nego-dataflow.png" alt="" width="600"/>
+      </center>
+    </p>
+    <p><center><i> Qi Negotiation Phase Dataflow  </i></center></p>
+  </div>
+  
+  Negotiation phase handles both Negotiation and Re-Negotiation packets using the same states.
+  <br><i>Negotiation : </i> The negotiation phase follows directly on the Configuration phase and 
+  serves to create the initial extended Power Transfer Contract.
+  <br><i>Re-Negotiation : </i> A renegotiation phase may interrupt the power transfer phase 
+  multiple times, and typically serves to adjust a single element of the Power Transfer Contract.
+
+  Following states are used to perform these data transfer activities.
+
+  <br><b><i>State 7</i></b><br>
+  State 7 is the main state of the negotiation phase. In this state, the Power Receiver can send 
+  data packets to negotiate properties of the extended Power Transfer Contract.
+
+  <br><b><i>State 8</i></b><br>
+  In state 8, the Power Transmitter sends an appropriate Response Pattern, replying to a simple-query 
+  data packet. The response consists of ACK/NAK/ND/ATN.
+
+  <br><b><i>State 9</i></b><br>
+  In state 9, the Power Transmitter sends an appropriate data packet in response to the GRQ data packet.
+
+  <br><b><i>State 10</i></b><br>
+  In state 10, the Power Transmitter sends an appropriate Response Pattern, replying to the SRQ/en 
+  data packet. The response consists of ACK/NAK/ND/ATN.
+
+  <br>The following flow diagram shows the overview ofthe state transitions in Negotiation Phase.
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-nego.png" alt="" width="800"/>
+      </center>
+    </p>
+    <p><center><i> Qi Negotiation Phase State Diagram  </i></center></p>
+  </div>
+</div>
+    
+@defgroup qi-statemachine-pt Power Transfer States Handlers
+@ingroup qi-statemachine
+@brief Qi Power Transfer Phase state handlers Implementation.
+@details
+<div>
+  The Power Transfer handlers implementation follows the Qi Specifications, Power Transfer Phase States. 
+  The following flow diagram shows the overview ofthe state transitions in Power Transfer Phase.
+  <p>
+    There are two possible Power Tansfer Phase State diagrams, one for the Baseline Power Profile (BPP) and 
+    other is for Extended Power Profile (EPP). In the EPP, there are additional states present which handle
+    extended features like Re-Negotiation and Data Transport Streams.
+  </p>
+  <h3 class="qiSub1">Baseline Profile</h3>
+  For the Baseline Profile functionality, the Power Transfer phase requires limited number of sub states to achieve the functionality.
+  The following is an example of data flow that occurs in the Baseline profile.
+
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-pwrTfr-BPP-dataflow.png" alt="" width="400"/>
+      </center>
+    </p>
+    <p><center><i> Qi Power Transfer Phase Dataflow : Baseline Profile </i></center></p>
+  </div>
+
+  Following states are used to perform these data transfer activities.
+
+  <br><b><i>State 11</i></b><br>
+  State 11 is the main state in the power transfer phase. In this state, the Power Receiver can send data
+  packets to control the power and provide data transport stream functionality.
+
+  <br><b><i>State 12</i></b><br>
+  In state 12, the Power Transmitter adjusts the power level based on the control error data it received. 
+  The Power Receiver waits until the Power Transmitter has finished controlling the power level.
+
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-pwrTfr-BPP.png" alt="" width="800"/>
+      </center>
+    </p>
+    <p><center><i> Qi Power Transfer Phase State Diagram : Baseline Profile </i></center></p>
+  </div>
+
+  <h3 class="qiSub1">Extended Profile</h3>
+  The extended power profile uses additional states compared to Baseline profile to provide the extended 
+  functionality like,
+  - Calibration
+  - Re-Negotiation
+  - Data Transport Streams
+
+  Following diagram shows the data exhange in extended phase.
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-pwrTfr-EPP-dataflow.png" alt="" width="400"/>
+      </center>
+    </p>
+    <p><center><i> Qi Power Transfer Phase Dataflow : Extended Profile </i></center></p>
+  </div>
+
+  Following are the additional states used in Extended profile.
+  <br><b><i>State 13</i></b><br>
+  In state 13, the Power Transmitter sends an appropriate Response Pattern, replying to a simple-query data packet.
+  The response pattern sent is one of the ACK/NAK/ND/ATN.
+
+  <br><b><i>State 14</i></b><br>
+  In state 14, the Power Transmitter sends an appropriate Response Pattern, replying to a negotiation simple-query data packet.
+  The response pattern sent is one of the ACK/NAK/ND/ATN.
+  <br>The state is used to start a Re-Negotiation phase.
+
+  <br><b><i>State 15</i></b><br>
+  In state 15, the Power Transmitter sends an appropriate data packet, replying to a data-request data packet.
+  This state is used to handle the Data Transport Stream packets. In response to incoming DSR packets, the
+  transmitter sends ADC/ADT etc.
+
+  <div class="qiImage">
+    <p>
+      <center>
+        <img src="images/Qi-states-pwrTfr-EPP.png" alt="" width="800"/>
+      </center>
+    </p>
+    <p><center><i> Qi Power Transfer Phase State Diagram : Extended Profile </i></center></p>
+  </div>
+
+  <h3 class="qiSub1">Calibration</h3>
+  In Power Transfer phase, when the transition occurs from the Negotiation phase, 
+  initial two-point power level calibration is done. The RP data packets are used to perfrom the calibration.
+  The calibration process utilises the states 11 and 13 for receiving packets from PRx and sending response respectively.
+
+  </div>
+    <div class="qiImage">
+      <p>
+        <center>
+          <img src="images/Qi-states-pwrTfr-Calibration.png" alt="" width="800"/>
+        </center>
+      </p>
+      <p><center><i> Qi Power Transfer Phase State Diagram : Calibration </i></center></p>
+    </div>
+  </div>
+
+  <h3 class="qiSub1">Calibration Process</h3>
+  The calibration process involves the exchange of RP packet variants to set the two power level points.
+  <br>
+  <br><b><i>State 11-1 : </i></b> The first calibration point is provided by PRx using the RP/1 packet.
+  <br><b><i>State 13-1 : </i></b> Response (ACK/NAK...) send to PRx in response to RP/1.
+  <br><b><i>State 11-2 : </i></b> The second calibration point is provided by PRx using the RP/2 packet.
+  <br><b><i>State 13-2 : </i></b> Response (ACK/NAK...) send to PRx in response to RP/2.
+  <br><b><i>State 11-3 : </i></b> End of calibration process indicated by PRx by sending RP/0 or RP/4 packet.
+  <br><b><i>State 12-1, 12-2, 12-3 : </i></b> The CE packets are handled in this state as described in the Baseline profile section.
+
+  </div>
+    <div class="qiImage">
+      <p>
+        <center>
+          <img src="images/Qi-states-pwrTfr-CalibrationDetails.png" alt="" width="800"/>
+        </center>
+      </p>
+      <p><center><i> Qi Power Transfer Phase State Diagram : Calibration Details </i></center></p>
+    </div>
+  </div>
+
+@defgroup qi-statemachine-api State Handler APIs
+@ingroup qi-statemachine
+@brief API functions used by state handler modules
+@details
+<div>
+  The state handler function share the data over a set of APIs defined in this file. The API definitions are 
+  provided in the header file, but the implementation can be provided by any of the state handler who oown the data.
+</div>
+
+@defgroup qi-statemachine-ds Qi Data Stream Functions
+@ingroup qi-statemachine
+@brief Qi Data Stream functions called by state machine in Power Transfer state.
+@details
+<div>
+    These functions provide an encapsulation for invoking the data stream packet handlers. The
+    state machine in Power Transfer phase invokes these function in different sub states of the 
+    Power Transfer phase.
+    <br> For details, see @ref qi-dataStream "Data Stream Functions".
+</div>
+	
+*/
+
+

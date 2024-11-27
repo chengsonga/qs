@@ -1,0 +1,159 @@
+/** 
+@addtogroup qi-dataStream
+
+@details
+<div>
+  <h2 class="qiMain">Data Stream Overview</h2>
+    <p>
+    Data (transport) streams are features supported in Qi 1.3 Specifications. The aim of these data streams is to 
+    provide a mechanism to exchange data between Power Receiver (PRx) and Power Transmitter (PTx) in parallel to the data
+    exchange necessary for the power charging.
+    </p>
+    <p>
+    The data streams can be used to perform the authentication of PTx by PRx to know if the transmitter can be trusted or not.
+    The Qi Authentication provides the implementation of authentication using the data streams.
+    </p>
+    <p>
+    It is possible to support the propriatery applications which use the data streams to exchange the data between PRx and PTx.
+    </p>
+
+    <h3 class="qiSub1">Streams</h3>
+    The data streams define application level data stream between PR and PTx. Two streams are needed to exchange the data.
+    One stream is used to send the data from PRx to PTx, and other for sending the data from PTx to PRx. In case of both
+    streams the stream setup is initiated by the PRx.
+
+    <h3 class="qiSub1">Data Packets</h3>
+    The data streams require support of dedicated data packets which are exchanged between the PRx and PTx. The PRx always initiates 
+    the packet transfer in Power Transfer phase. Following table shows the important data packets used in data exchange using data streams.
+    <p>
+      <br>
+      <!--center-->
+        <p><i> <a name="tab-qi-datastream-packets">Data Transport Packets: </a></i></p>
+        Data Stream Direction | Packet <br> (PRx -> PTx) |Response <br> (PTx -> PRx) |Description
+        :--------------------:|:------:|:------:|-----------
+        Source : PRx <br>Destination : PTx|ADC| ACK/NAK/ND/ATN |<ul><li> PRx sends the ADC packet to open a channel with PTx. </li> <li>The type of channel (authentication / propriatary) is indicated.</li> <li>Length of data to exchange is also provided.</li></ul>
+        ^|ADT |  ACK/NAK/ND/ATN |If the data stream is open, then PRx sends ADT packet to PTx.
+        Source : PTx <br>Destination : PRx|DSR/poll | ADC/ADT | <ul><li>Check if PTx has any data stream packet to send.</li> <li>Used to initiate open the stream from PTx to PRx.</li> <li>PTx can send ADC/ packet to initialize the channel.</li><li>PTx can send the ADT packet in response.</li></ul>
+        ^|DSR/ack | ADC/ADT| <ul><li>Used to acknowledge PTx that the last packed is properly received by PRx. </li><li>PTx can send next ADT packet in response. </li><li>PTx can send ADT packet (for e.g, to reset the data stream)</li></ul>
+      <!--/center-->
+    </p>
+    
+    <br>This table provides data packets exchange information at high level, to provide a general idea. Qi Specifications should be consulted for details.
+
+    <br>Following figure provides examples of exchange of packets in both streams.
+    <p>
+      <center>
+        <img src="images/QiDataStreams-data-exchange.png" alt="" width="800"/>
+      </center>
+    </p>
+    <p><center><i> Data Streams - Packet Exchange </i></center></p>	  	
+
+    <hr>
+    <h3 class="qiSub1">Data Model</h3>
+    The data stream implementation requires buffer management for receiving and transmitting the data packets between PRx and PTx.
+    Following figure provides the data model as defined in the Qi Specifications.
+    <p>
+      <center>
+        <img src="images/QiDataStreams-data-model.png" alt="" width="600"/>
+      </center>
+    </p>
+    <p><center><i> Data Model </i></center></p>	  	
+
+    <p>Following table provides the mapping of different components of this data model in the Qi Stack data streams implementation.</p>
+    <p>
+      <br>
+      <!--center-->
+        <p><i> <a name="tab-qi-datastream-datamodel">Qi Stack mapping of Data Model: </a></i></p>
+        Data Model Component | Mapping <br>(to Qi Authentication) |Description
+        :-------------------:|:---------------------------------:|-----------
+        Application Layer | Qi Authentication | Qi Authentication acts as application
+        Application Buffer| Qi Authentication Buffer| Qi Authentication maintains this buffer and provides its access to transport layer.<br>Separate buffers are maintained for transmitting and receiving the data (one for each stream).
+        Transport Layer| Qi Stack | Qi Stack implements the receiving and processing of the packets. <br>The data stream implementation receives the packets and loads the application buffer with received data.
+        Transport Buffer| Qi Authentication Buffer| Qi Stack uses the Qi Authentication buffer as transport layer buffer.
+        Data Packets| Qi Stack| Qi Stack receives the packets and handles them as per transport protocol. <br>Packets are not passed to Qi Authentication.
+      <!--/center-->
+    </p>
+
+    <p>
+    <br>
+    The Qi Stack implements the transport layer features to achieve the data stream functionality. The opening of stream,
+    receiving the data (via data packets) and closing of the data stream, including error handling is done in the Qi Stack.
+    The applications are informed via callback functions once the data is completely received in a data stream.
+
+    <br> The applications should ensure that the required buffer sizes are allocated appropriately.
+    </p>
+
+    <hr>
+    <h3 class="qiSub1">Data Stream Architecture</h3>
+    The data stream exports APIs and interfaces to integrate it with the rest of the Qi Stack and to integrate it
+    with the data stream application like Qi Authentication.
+    
+    <br>
+    Fllowing figure shows the important blocks of the data stream module.
+    <p>
+      <center>
+        <img src="images/QiDataStream-architecture.png" alt="" width="600"/>
+      </center>
+    </p>
+    <p><center><i> Data Streams Architecture </i></center></p>	  	
+
+    <h4 class="qiSub2">Qi State Machine Data Stream Functions </h4>
+    This module consists of functions which are implemented by the data stream implementation to handle the data stream packets.
+    The state machine in Power Transfer phase receives the data stream packets and invokes these functions to interact with data stream module.
+    <br>The details can be found in @ref qi-statemachine-ds "Qi Data Stream Functions".
+
+    <h4 class="qiSub2">Data Stream Application </h4>
+    This is a application outside the Qi Stack which uses the data streams as defined in the Qi 1.3 specifications, for e.g, Qi Authentication.
+
+    <h4 class="qiSub2">Application Configuration</h4>
+    The static (compile time) configuration of the data streams consist of configuring the call back functions. These callback functions 
+    are called by the Qi data stream implementation during packet processing to infoorm the application the state of the data exchange.
+    <br>Refer @ref qi-dataStream-api "data stream APIs" for details.
+
+    <h4 class="qiSub2">Data Stream API</h4>
+    These are the APIs exposed by Qi Data Stream module for applications (e.g, Qi Authentication) and the rest of the Qi Stack.
+    <br>The applications call these APIs to start and stop the data transport streams, configure the application buffer.
+    <br>The Qi State Machine uses these APIs to initialize the streams.
+    <br>Refer @ref qi-dataStream-api "data stream APIs" for details.
+
+    <h4 class="qiSub2">Client Channel</h4>
+    This module manages the data stream where PRx acts as source of data and PTx acts as the destination.
+    The PRx sends the ADC/ADT packets and PTx responds with response (ACK, NAK etc).
+    <br>Refer @ref qi-dataStream-channel "Qi Channel Functions" for details.
+
+    <h4 class="qiSub2">Server Channel</h4>
+    This module manages the data stream where PTx acts as source of data and PRx acts as the destination.
+    The PRx sends the DSR(poll/ack) packets and PTx responds with response packets ADC/ADT.
+    <br>Refer @ref qi-dataStream-channel "Qi Channel Functions" for details.
+
+    <h4 class="qiSub2">Application Interface</h4>
+    The application interface defines a set of functions which should be implemented by the application (like Qi Authentication).
+    One set of function interfaces are provided for client channel and another set of function interface is provided for server channel.
+    The application should configure these functions statically (compile time). These functions are invoked 
+    during data exchange over the data streams between PRx and PTx.
+    <br>Refer @ref qi-dataStream-api "data stream APIs" for details.
+   
+    <p>
+      <br>
+      <p>Following table describes the interfaces defined in Data Streams Architecture.</p>
+      <br>
+      <!--center-->
+        <p><i> <a name="tab-qi-datastream-arch">Qi Data Stream Interfaces: </a></i></p>
+        ID | Description
+        :----:|--------------
+        1a| Qi State Machine initializes the Qi Data Stream.
+        1b| Data stream application configures, <ul><li>data buffer sizes</li><li>application type (e,g. Qi Authentication)</li></ul>
+        2a| Qi State Machine invokes, <ul><li>functions to handle the ADC/ADT packets</li><li>get response (ACK, NAK etc)</li></ul>
+        2b| Qi State Machine invokes, <ul><li>functions to handle the DSR(poll/ack) packets</li><li>get the response packets (ADC/ADT)</li></ul>
+        3| Qi Data Stream invokes the application call back functions, <ul><li>on stream open </li><li>on data receive / transmit completion </li><li>on encountering an error</li><li>on stream close</li></ul>
+        4| Application statically configures the callback functions (as defined in '3' above).
+        5a| Data stream functions invoke the client functions
+        5b| Data stream functions invoke the server functions
+        6a| Client invokes the application callback function
+        6b| Server invokes the application callback function
+      <!--/center-->
+    </p>
+    <br>
+</div>
+
+*/

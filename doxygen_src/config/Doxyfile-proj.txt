@@ -1,0 +1,20 @@
+PROJECT_NAME = "Qi Stack"
+PROJECT_NUMBER = "Version 1.2"
+PROJECT_BRIEF = "Qi Stack documentation"
+PLANTUML_INCLUDE_PATH = "../puml-files"
+PLANTUML_CFG_FILE = "../puml-files/puml_cfg.puml"
+IMAGE_PATH = "../images"
+PROJECT_LOGO = "../images/microchip-docs.png"
+OUTPUT_DIRECTORY = "../../../docs"
+HTML_EXTRA_STYLESHEET += ../styles/qi_stack.css
+INPUT = 
+EXCLUDE = 
+
+# USE_MDFILE_AS_MAINPAGE : md file to be used as mainpage in generated document
+# e.g:
+# USE_MDFILE_AS_MAINPAGE = "../../../Readme.md"
+USE_MDFILE_AS_MAINPAGE   = $(QI_STACK_PATH)/Readme.md
+
+# Readme file
+INPUT += $(QI_STACK_PATH)/Readme.md
+

@@ -1,0 +1,51 @@
+#-------------------------------------------------------
+# All the paths are relative to the folder from which the doxygen is invoked!
+
+
+
+#-------------------------------------------------------
+
+# Add the input files below
+# e.g
+# INPUT += "../../../file.h"
+
+# Source files
+INPUT += $(QI_STACK_PATH)/qi_main.h
+INPUT += $(QI_STACK_PATH)/calibration/qi_calibration.h
+INPUT += $(QI_STACK_PATH)/calibration/qi_calib_defines.h
+INPUT += $(QI_STACK_PATH)/core/
+INPUT += $(QI_STACK_PATH)/comm/
+INPUT += $(QI_STACK_PATH)/timer/
+INPUT += $(QI_STACK_PATH)/driver/
+INPUT += $(QI_STACK_PATH)/defines/
+INPUT += $(QI_STACK_PATH)/sm/
+INPUT += $(QI_STACK_PATH)/datastreams/
+INPUT += $(QI_STACK_PATH)/extern/
+INPUT += $(QI_STACK_PATH)/templates/qi_project_parameter_defines_temp.h
+INPUT += $(QI_STACK_PATH)/templates/qi_project_peripheral_defines_temp.h
+
+
+# Documentation files - .dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/index_doc.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/index_inbandComm.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/index_QiCore.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/index_Statemachine.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/index_QiSubStates.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/index_QiDataStream.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/details_qi_architecture.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/details_qi_statemachine.dox
+INPUT += $(QI_STACK_PATH)/.mchp_private/doxygen_src/dox-files/details_qi_datastream.dox
+
+
+
+#-------------------------------------------------------
+
+# Add the excluded files below
+# e.g
+# EXCLUDE += "../../../exclude.h"
+
+#-------------------------------------------------------
+
+STRIP_FROM_PATH          += $(QI_STACK_PATH)
+STRIP_FROM_INC_PATH      += $(QI_STACK_PATH)
+

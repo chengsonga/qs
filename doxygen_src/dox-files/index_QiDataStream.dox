@@ -1,0 +1,213 @@
+/* *********************************************************************************
+ * Online Documentation Qi State Machine Index
+ *
+ * ********************************************************************************/
+
+/**
+
+@defgroup qi-dataStream-api Qi Data Stream APIs
+@ingroup qi-dataStream
+@brief Qi Data Stream Interface functions for applications and other modules of Qi Stack.
+@details
+<div>
+  <div>
+    The data stream APIs provide the functions for,
+    - Data Stream Applications (like Qi authentication)
+    - Qi State Machine
+
+    <p>
+    The data stream applications should invoke the #QI_DS_SetBufferSize() very early in the iniitialization
+    phase to set the buffer sizes for client and server streams. In a application state machine, 
+    the applications can call #QI_DS_Open(). A open channel can be closed using the #QI_DS_Close().
+    The necessary state - opened/closed channel - should be maintained by the applucation.
+
+    Once the channel is opened, the call back functions are used by the data stream layer to inform the
+    application of state changes and errors.
+    </p>
+    <br>
+    <p>
+    The application should have one instance of #QI_DS_INFO structure for each client and server
+    streams. The different buffers should be allocated if possible.
+    </p>
+    <br>
+    <p>
+    The Qi State Machine should invoke the #QI_DS_SetMaxAllowerADTSize() before the server channel is
+    opened. The data stream layer uses this to create appropriate ADT packets.
+    </p>
+  </div>
+  <div>
+    The following sequence diagram shows the overview of API calls from Data Stream Application and the
+    call back sequence overview.
+
+    <div class="qiImage">
+      <center>
+        @startuml{puml-seq-qi-datastream-api-1.png}
+          !include ../puml-files/sequence-qi-datastream-api.puml
+        @enduml
+      </center>
+      <p><center><i>Sequence Diagram : Qi Data Stream API Usage (without errors) </i></center></p>	  	
+    </div>
+  </div>
+</div>
+
+@defgroup qi-dataStream-channel Qi Channels Functions
+@ingroup qi-dataStream
+@brief Qi Data Stream Channels functions used by Qi trasnport layer.
+@details
+<div>
+  The data streams define two channels for handling the data to and from the PRx.
+  <p>
+    The client channel is responsible for receiving the data information from the PRx and passing 
+    it to the appropriate application. The application performs the read operation to get the data from
+    PRx, for which the client channel is used.
+  </p>
+  <p>
+    Similarly, server channel is responsible for sending the data to the PRx. The application performs
+    the write operation. The data stream layer opens a server channel and sends the application data 
+    over this interface.
+  </p>
+  <p>
+  The data stream channel functions provide a simple interface along with a data structure for the Qi State Machine
+  to invoke in case of processing the data packets and getting the response. Behind these functions the 
+  data transport stream protocol (which handles the odd/even ADT packets) is managed. The error handling
+  and synchronization of the data packets is managed in these functions.
+  <p>
+
+  <div>
+    <h3 class="qiSub1"> Data Stream Sequence Diagrams </h3>
+    The following sequence diagrams provide the overview of the interaction between 
+    the state machine and the client/server data stream using these functions.
+    <table class="qiSeqTable">
+      <tr>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Client Sequence Diagram </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-client.png}
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-client.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Client Communication - Receive Data </i></center></p>	  	
+          </div>
+      </td>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Server Sequence Diagram </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-server.png}
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-server.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Server Communication - Transmit Data </i></center></p>	  	
+          </div>
+      </td>
+      </tr>
+    </table>
+  </div>
+  <div>
+    <!-- 
+    <hr>
+    <h3 class="qiSub1"> Client Data Stream Flow </h3>
+    The following sequence diagrams provide the overview of the interaction between 
+    the state machine and the client data stream over these functions.
+    <table class="qiSeqTable">
+      <tr>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Client : Data Stream Setup </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-client-1.png}
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-client-1.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Client Communication - Setup </i></center></p>	  	
+          </div>
+      </td>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Client: Open Stream </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-client-2.png} width=10cm
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-client-2.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Client Communication - Start Receive</i></center></p>	  	
+          </div>
+      </td>
+      </tr>
+      <tr>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Client : Receive Data </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-client-3.png} width=10cm
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-client-3.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Client Communication - Receive Data </i></center></p>	  	
+          </div>
+      </td>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Client : Close Stream </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-client-4.png} width=10cm
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-client-4.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Client Communication - End Receive </i></center></p>	  	
+          </div>
+      </td>
+      </tr>
+    </table>
+    --->
+  </div>
+  <div>
+    <h3 class="qiSub1"> Server Data Stream Flow </h3>
+    The following sequence diagrams provide the overview of the interaction between 
+    the state machine and the server data stream over these functions.
+    <table class="qiSeqTable">
+      <tr>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Server : Data Stream Setup </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-server-1.png} width=10cm
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-server-1.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Server Communication - Setup </i></center></p>	  	
+          </div>
+      </td>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Server : Open Stream </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-server-2.png} width=10cm
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-server-2.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Server Communication - Start Receive</i></center></p>	  	
+          </div>
+      </td>
+      </tr>
+      <tr>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Server : Transmit Data </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-server-3.png} width=10cm
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-server-3.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Server Communication - Transmit Data </i></center></p>	  	
+          </div>
+      </td>
+      <td class="qiTableCell">
+        <h4 class="qiSub2"> Server : Close Stream </h4>
+          <div class="qiImage">
+              @startuml{puml-seq-qi-datastream-server-4.png} width=10cm
+                scale .75
+                !include ../puml-files/sequence-qi-datastream-server-4.puml
+              @enduml
+            <p><center><i>Sequence Diagram : Server Communication - End Transmit </i></center></p>	  	
+          </div>
+      </td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+*/

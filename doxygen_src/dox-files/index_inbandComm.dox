@@ -1,0 +1,124 @@
+/* *********************************************************************************
+ * Online Documentation Qi In-Band Communication Index
+ *
+ * ********************************************************************************/
+
+/**
+
+@defgroup qi-comms-ask-config Qi ASK Configuration
+@ingroup qi-comms
+@brief Qi ASK Communication Configuration 
+@details
+	Number of DDM channels is configurable as long as there are enough SCCPs/MIPS available. The FW was designed to scale with the number of channels by adding/ 
+    removing elements to #QI_COMMS_CH_t. 
+
+	If the SCCP modules are reconfigured to use a different clock then FCY, then macros #HALF_BIT, #FULL_BIT, #BIT_MARGIN, and #MID_BIT_THRES, need to be reconfigured
+    as the SCCP counts for comparison are all derived from FCY. 
+
+
+@defgroup qi-comms-ask Qi ASK Functions
+@ingroup qi-comms
+@brief Qi ASK Communication functions 
+@details
+    Implementation details for amplitude shift key.
+
+	Communication from PRx to PTx is performed through a method called Amplitude Shift Key or Amplitude Modulation. PRx’s are required to include a means to 
+	modulate the primary coil current/voltage, which is accomplished by adding a load modulation circuit (capacitive or resistive load element) and a switch 
+	in parallel to the receiver’s coil. When the receiver is powered, the PRx begins switching the load modulator effectively encoding a bit stream of 1’s 
+	and 0’s at a 2kHz rate onto the power signal. The transmitter on the other hand is responsible for decoding this non-continuous bit stream by filtering out 
+	the switching element and looking only at the 2kHz communication signal. See Qi Digital Demodulation Functions for more information on implementation.
+	
+	Bit modulation is performed using differential bi-phase encoding scheme, where two transitions (edges) within the 2kHz window is decoded as a '1' and a 
+	single transition is encoded as a '0'. On top of the 8-bit data byte, a start bit ('0'), a stop bit ('1'), and a parity bit for simple error checking is 
+	added, forming an 11-bit asynchronous serial format. Each packet must start with a preamble (series of 1's) to synchronize too. This preamble must be at 
+	least 11 bits and at most 25 bits. The first byte sent is the header byte which indirectly provides the number of bytes in the message. The last byte sent
+	is the checksum of the packet. The checksum is determined by exclusive OR operation of each byte in the message.
+	
+	For a packet to be received correctly:
+	- Transmitter must detect four valid one-bits before the start bit is detected on the header byte
+	- Transmitter must determine and verify the parity bit for each byte received
+	- Stop bit of checksum byte is detected and checksum is valid
+	
+	In the event that the transmitter doesn't receive a packet correctly, the data received in the packet must be discarded.
+	
+<p>
+  <center>
+    <img src="images/Qi_ASK.png" alt="" width="1200"/>
+  </center>
+</p>
+<p><center><i>Qi Amplitude Modulation Scheme </i></center></p>	
+	
+	
+@defgroup qi-comms-fsk Qi FSK Functions
+@ingroup qi-comms
+@brief Qi FSK Communication functions 
+@details
+    Implementation details for frequency shift key. 
+
+	Communication from the transmitter to an EPP type receiver (propriatery BPP PRx) is done through Frequency Shift Keying (FSK) or Frequency Modulation. 
+	The power transmitter now modulates the operating frequency of the power signal encoding a bit stream of 1’s and 0’s and the receiver is responsible for 
+	decoding the data. The encoding scheme is the same differential bi-phase encoding as described QI ASK Functions. There are two differences though: the receiver 
+	defines the depth (delta frequency) and polarity (direction) of the frequency change and the communication frequency is defined by the transmitter’s 
+	operating frequency. The transmitter encodes a 'one' by two transitions of the frequency at 256 cycles and a 'zero' using a single transition for 512 cycles.  
+	
+	Typical 8-bit responses such as ACK (0xFF), NACK(0x00), ND(0x55), and ATTN (0x33) packets do not require additional formatting (start/stop/parity) and are 
+	sent as is. The receiver can translate this repeating pattern as an expected response. For responses that require additional formatting, the same 11-bit
+	asychronous serial formatting and packet structure is used as described in Qi ASK Functions. 
+	
+	For a packet to be received correctly:
+	- Transmitter must adhere to polarity and depth requests
+	- Receiver must determine and verify the parity bit for each byte received
+	- Stop bit of checksum byte is detected and checksum is valid
+	
+	In the event that the Receiver doesn't receive a packet correctly, the data received in the packet must be discarded.
+	
+<p>
+  <center>
+    <img src="images/Qi_FSK.png" alt="" width="900"/>
+  </center>
+</p>
+<p><center><i>Qi Frequency Modulation Scheme </i></center></p>		
+	
+@defgroup qi-comms-DDM Qi Digital Demodulation Functions
+@ingroup qi-comms
+@brief Qi Digital Demodulation functions 
+@details
+    Implementation details for digital demodulation. 	
+	
+	Demodulation is achieved by sampling the modulated power signal (coil voltage/current) and abstracting out the critical 2kHz frequency. This can be achieved 
+	by sampling the coil phase difference and/or amplitude difference using the 12-bit ADC and passing this information to a digital filter. The digital filter
+	should remove any DC component, and anttenuate all frequencies outside of the band of interest. 
+	This application uses a cascaded filter (series of 1P1Z controllers) implementing variations of low pass / high pass filters to abstract the 2-4kHz 
+	communication signal. The output of the controller is compared to a digital threshold which will then drive an I/O port high/low. The input capture is pin 
+	mapped to the same I/O and is capturing the timing between edges. This timing information is then used to construct the bits->bytes-> packets. 
+	
+	A commonly used filter is the band pass filter that places the high pass filter at approximately 500Hz and two low pass filters at ~5kHz. The high pass 
+	filter removes the DC component and the low pass filters give more then -40dB of attenuation of the main power signal. It is important to note that 
+	performance of the digital demodulation filters depends on how P/Z pairs have been arranged (grouped) and changing of the structure may impact communication 
+	performance. Controller coefficients are found in demod_coefs.h and can be modified to fit application. Coeffs are derived based on sampling frequency and
+	for optimum performance, fixed frequency topologies, sampling rate is typically chosen as the inverter switching frequency. For topologies implementing 
+	frequency control, pointers to set of control coefficients for a frequency range is required.  
+
+	For some applications, it may be possible to use PWM4 with its peripheral pin select capabilities and to virtually map this PWM generator to the same 
+	virtual pin as that of an input capture module. This removes the need for two external I/O pins but it also removes the ability to capture the data bit 
+	stream on an oscilloscope. This may be required in applications that are pin restricted. In applications requiring more than two comm. paths, dedicated pins 
+	are required. To enable this virtual pin mapping feature, define #USE_VIRTUAL_DDM_VCOIL in the qi_project_parameter_defines.h file. 
+	
+<p>
+  <center>
+    <img src="images/DDM_BlockDiagram.png" alt="" width="900"/>
+  </center>
+</p>
+<p><center><i>Digital Demodulation Block Diagram</i></center></p>
+	
+	
+	In most applications the coil voltage phase and coil voltage peak data is abstracted using the dsPIC's averaging feature of the ADC module in conjunction 
+	with the DMA module. The PWM module will trigger the start of S&C every PWM cycle with the SAMC bits defining the time between successive samples. After the 
+	fourth sample is taken, the ADC module averages the four samples and generates the digital filter interrupt flag. This average (phase data) is then passed 
+	to the digital filters. In parallel, the DMA module has been configured to read the ADC buffer after each of the four sample/converts. After processing the 
+	phase filter, the fourth sample pulled from an array tied to the DMA module is passed into its own digital demodulation filter for processing coil voltage 
+	peak. In most cases, these two signals are identical and will work interchangeably. 
+
+*/
+
+

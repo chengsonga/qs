@@ -1,0 +1,40 @@
+@startuml
+participant "Scheduler" as SCH
+participant "QI Main Task \n(Level 1)" as MT
+participant "Ping State Handler \n(Level 2)" as SM_P
+participant "Ping Sub State Handler \n(Level 3)" as SUB_ST_P
+
+== Start processing state Ping 1 ==
+autonumber "[a0]"
+SCH -> MT ++ : <font color=blue>QI_Sm_Task()
+MT -> SM_P ++: <font color=blue>QI_HandleStateP1()
+SM_P -> SUB_ST_P ++ : <font color=green>QI_Sm_ProcessDigitalPing()
+SUB_ST_P -> SUB_ST_P : process Digital Ping state
+SUB_ST_P --> SM_P --: return <font color=magenta>PING1_DIGITAL_PING
+SM_P --> MT --
+MT --> SCH --
+
+...
+== Process SIG Packet and switch to Config 2 state ==
+autonumber "[b0]"
+note over SCH, MT
+The Signal packet (SIG) is 
+received by communication modules.
+endnote
+SCH -> MT ++ : <font color=blue>QI_Sm_Task()
+MT -> SM_P ++: <font color=blue>QI_processPacketInStatePing()
+SM_P -> SUB_ST_P ++ : <font color=green>QI_Sm_DigitalPingAnalysePacket()
+SUB_ST_P -> SUB_ST_P : process Digital Ping packet \nUpdate internal state
+SUB_ST_P --> SM_P --
+SM_P --> MT --
+MT -> SM_P ++: <font color=blue>QI_HandleStateP1()
+SM_P -> SUB_ST_P ++ : <font color=green>QI_Sm_ProcessDigitalPing()
+SUB_ST_P -> SUB_ST_P : process Digital Ping
+SUB_ST_P --> SM_P : return <font color=magenta>PING1_DIGITAL_PING_DONE
+SM_P -> MT ++: <font color=green>QI_Sm_GotoState(QI_SM_CONFIG_2)
+MT -> MT : set new state as Config 2
+MT --> SM_P --
+SM_P --> MT --
+MT --> SCH --
+====
+@enduml

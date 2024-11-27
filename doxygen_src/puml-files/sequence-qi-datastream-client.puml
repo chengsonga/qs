@@ -1,0 +1,154 @@
+@startuml
+participant "Qi State Machine" as SM
+participant "Qi Data Stream" as DS
+participant "Application" as APP
+
+== Client Setup ==
+autonumber "[s0]"
+note over SM, DS
+The application sets up the client channel.
+endnote
+activate APP
+APP -> DS : <font color=blue>QI_DS_Open()
+activate DS
+DS -> DS : Register the request \nfor opening the channel
+DS --> APP
+deactivate DS
+deactivate APP
+
+...
+== Data Transfer Start ==
+autonumber "[a0]"
+note over SM, DS
+Qi State PT11:
+The ADC/app packet is received.
+Where "app" is AUTH or PROP application.
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process ADC packet \n(data length = LEN)
+DS -> APP : <font color=magenta>pfOpenCB(LEN)
+activate APP
+APP -> APP : Store LEN and \nreturn buffer address
+APP --> DS
+DS --> SM : Move to state PT13
+deactivate APP
+deactivate DS
+deactivate SM
+...
+note over SM, DS
+Qi State PT13:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the ADC packet response
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+
+...
+== Receive Data ==
+autonumber "[b0]"
+note over SM, DS
+Qi State PT11:
+The ADT packet is received.
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process ADT packet \n(even/odd)
+DS --> SM : Move to state PT13
+deactivate DS
+deactivate SM
+...
+note over SM, DS
+Qi State PT13:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the ADT packet response
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+
+...
+note over SM, DS
+Qi State PT11:
+The last ADT packet is received.
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process ADT packet \n(even/odd)
+DS --> SM : Move to state PT13
+deactivate DS
+deactivate SM
+...
+note over SM, DS
+Qi State PT13:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the ADT packet response
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+
+...
+== Data Transfer End ==
+autonumber "[c0]"
+note over SM, DS
+Qi State PT11:
+The ADC/end packet is received.
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process ADC/end packet
+DS -> APP : <font color=magenta>pfSuccessCB(LEN)
+activate APP
+APP -> APP : Process success state
+APP --> DS
+deactivate APP
+DS -> APP : <font color=magenta>pfCloseCB()
+activate APP
+APP -> APP : Close the channel in application
+APP --> DS
+DS --> SM : Move to state PT13
+deactivate APP
+deactivate DS
+deactivate SM
+...
+note over SM, DS
+Qi State PT13:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_clientGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the ADC packet response
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+====
+
+@enduml

@@ -1,0 +1,55 @@
+/************************************************************/
+/* The following are used to ararnge text at 3 levels:
+    - Main section 1 : qiMain
+        - Sub section 1.1 : qiSub1
+            - Sub section 1.1.1 : qiSub2
+ */
+h2.qiMain {
+    font-weight: bold;
+    font-size: 120%;
+    margin-top: 18px;
+    margin-bottom: 8px;
+}
+
+
+h3.qiSub1 {
+    font-weight: bold;
+    font-size: 110%;
+    margin-top: 13px;
+    margin-bottom: 4px;
+    text-decoration: underline;
+}
+
+h4.qiSub2 {
+    font-weight: bold;
+    font-size: 100%;
+    margin-top: 10px;
+    margin-bottom: 0px;
+}
+/************************************************************/
+
+div.qiImage {
+    margin-top: 18px;
+}
+
+/* Special class for title type text in div */
+div.qiTitle {
+    font-weight: bold;
+    font-size: 140%;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+table.qiSeqTable {
+    width: 100%;
+    margin-top: 18px;
+    margin-bottom: 8px;
+}
+
+table.qiSeqTable td.qiTableCell {
+    width: 50%;
+    background-color: ivory;
+    vertical-align: top;
+
+    border: 1px solid rgb(130, 183, 201);
+}

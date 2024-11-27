@@ -1,0 +1,21 @@
+@startuml
+participant "Qi State Machine" as SM
+participant "Qi Data Stream" as DS
+participant "Application" as APP
+
+== Client Setup ==
+autonumber "[s0]"
+note across
+The application sets up the client channel.
+endnote
+activate APP
+APP -> DS : <font color=blue>QI_DS_Open()
+activate DS
+DS -> DS : Register the request \nfor opening the channel
+DS --> APP
+deactivate DS
+deactivate APP
+
+...
+
+@enduml

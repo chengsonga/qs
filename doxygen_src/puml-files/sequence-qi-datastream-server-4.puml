@@ -1,0 +1,52 @@
+@startuml
+participant "Qi State Machine" as SM
+participant "Qi Data Stream" as DS
+participant "Application" as APP
+
+== Server Setup ==
+...
+== Data Transfer Start ==
+...
+== Transmit Data ==
+...
+== Data Transfer End ==
+autonumber "[c0]"
+note over SM, DS
+Qi State PT11:
+The DSR/ack packet is received.
+endnote
+SM -> DS : <font color=blue>QI_Stream_serverSetDataReceived()
+activate SM
+activate DS
+DS -> DS : Process DSR/ack packet \n set ADC/end
+DS -> APP : <font color=magenta>pfSuccessCB(LEN)
+activate APP
+APP -> APP : Process success state
+APP --> DS
+deactivate APP
+DS -> APP : <font color=magenta>pfCloseCB()
+activate APP
+APP -> APP : Close the channel in application
+APP --> DS
+DS --> SM : Move to state PT15
+deactivate APP
+deactivate DS
+deactivate SM
+...
+note over SM, DS
+Qi State PT15:
+Get the response after packet processing
+endnote
+SM -> DS : <font color=blue>QI_Stream_serverGetDataToSend()
+activate SM
+activate DS
+DS -> DS : Set the DSR/ack packet response
+DS --> SM
+SM -> SM : Send the response
+...
+SM -> SM : Move to state PT11
+deactivate DS
+deactivate SM
+====
+
+@enduml

@@ -1,0 +1,171 @@
+/* *********************************************************************************
+ * Online Documentation Qi Core Index
+ *
+ * ********************************************************************************/
+
+/**
+
+@defgroup qi-core-PID Qi PID Controller
+@ingroup qi-core
+@brief PID control Functions
+@details
+    The PID controller for power regulation.	
+	
+	In the power transfer phase, when control error (CE) packets are recieved, the Qi state machine transitions to state 12, which processes the PID controller, 
+	and whose reponsibility is to set a new operating point based on the current primary cell current and the data contained in the CE packet. Control error 
+	packets can only be received in the power transfer phase. If sent in any other state, the Qi stack will shutdown for receiving an illegal packet. When 
+	transitioning to PID controller state, the PID statemachine must follow timings defined by Qi specifications / receiver. 
+	
+<p>
+  <center>
+    <img src="images/PIDstate.png" alt="" width="900"/>
+  </center>
+</p>
+<p><center><i> PID State Transition Power Transfer Phase</i></center></p>
+	
+ 
+This control error signal is signed 8-bit data (-128 -> +127) and is unit less. The power receiver may use any approach to determine the control point, for example,
+output voltage, output current, or even output power. The transmitter requires control error packets to be sent at a minimun of #T_TIMEOUT but in reality, CE 
+packets will be sent much faster. A negative control error packet indicates a request from the PRx to reduce the power being transmitted. A positive CE indicates
+that the PRx requires more power from the transmitter to keep the output regulated. 
+
+As seen in the following diagram, controller error signal is derived from primary cell current and control error packets. This error is passed into the PID 
+controller. The output of the PID controller is scaled by a scaling factor (Sv) which converts PID counts back into control output parameter (i.e. volts, 
+frequency, phase, and duty cycle). The new control output is applied immediately but transmitter waits t_inner (#ITERATION_MSEC) before measuring new primary cell
+current to be used for the next PID iteration. 
+
+The PID coefficients as well as clamping / scaling factors are fixed for a given topology and can be found in qi_pidComp.h.
+User's can modify the number of iterations (#NUM_ITERATIONS) and the time between each iteration (#ITERATION_MSEC) as well as the settling time (#T_SETTLING_TIME)
+by qi_project_paramter_defines.h or by setting this for each board through calibration flash routine.  
+Note: Qi specifications require the following conditions always be met: 
+
+1) Nominal PID duration (t_active) equals 20ms which is equal to #NUM_ITERATIONS * t_inner
+
+2) T_SETTLE be in the range of 3-7ms
+
+3) T_delay before processing PID comes from receivers power control hold off packet
+	
+<p>
+  <center>
+    <img src="images/PIDcontroller.png" alt="" width="900"/>
+  </center>
+</p>
+<p><center><i> PID Controller Block Diagram</i></center></p>
+	
+@defgroup qi-core-QFOD Qi Q-FOD
+@ingroup qi-core
+@brief Measure quality factor, reference frequency, and delta peaks for object detection functions
+@details
+	In the analog ping state, function QI_Sm_measureQ() is called to search for an object on the interface surface. This may be any type of object including a 
+	receiver. For object detection; quality factor, reference frequency and delta peaks data is used and compared against calibrated open-air data of the 
+	inverter itself. If a deflection in Q or a change in resonant frequency is detected, then it is said to have an object on the interface surface. 
+	When an object is detected, QI_Sm_measureQ() returns true indicating that Qi state-machine needs to proceed towards digital ping state to see if SIG packet 
+	can be found (PRx is placed). This function converts the measured Q into the reference Q to be used in the Negotiation phase for Q-FOD protection. 
+
+	#MeasureQ() function is called, passing in specific operating conditions for the inverter drive that excites the resonant tank but ensures the receiver is not 
+	being pre-charged as this will affect quality factor. For rail control topologies, the Qi stack supports driving the rail to a specified setpoint that's not 
+	the digital ping state prior to calling this function. This function implements the resonant decay method for finding the quality factor of the system. For 
+	resonant decay method to work, the coil voltage signal needs to be sampled at high sampling rates to find coil voltage peaks. #MeasureQ() will capture 
+	#NUMQWORDS worth of data and post process it searching/storing peak information to be used for resonant decay Q calculation. The image below captures 
+	resonant decay implementation and the equation for calculating Q from peak information. See Qi Stack Configuration for more details on setting up number of
+	coil voltage samples/peaks to collect and averaging of quality factor.  
+	
+	Next, #MeasureResFreq() and #MeasureAvgPeak() can be called to find the resonant frequency and delta average of peaks over the measure Q span. In the #MeasureQ()
+	function, the Comparator+DAC module and a SCCP channel are enabled for tracking zero cross events of the resonant frequency while coil voltage is being 
+	sampled. The free runnning SCCP counts are stored in a file scope array and accessed again when #MeasureResFreq() is called. The SCCP time stamps are converted 
+	to hertz in this function to be used for object detection as well as RF-FOD in the negotiation phase. 
+	
+	#MeasureAvgPeak() is solely used as a mechanism to detect different objects on the interface surface and not for FOD purposes. This function uses the same Q 
+	peaks data that was collected in #MeasureQ() but instead of finding Q, is looking at average difference over a period of time.
+	
+<p><i> Resonant Decay Method for Quality Factor</i></p>		
+<p><img src="images/resonantDecay.png" alt="" width="900"/></p>
+
+ 	
+@defgroup qi-core-tasks Qi Tasks
+@ingroup qi-core
+@brief Different scheduled tasks to be carried out
+@details
+    Any low priority tasks to be called periodically by the operating system are handled within these files. The Qi stack requires one 1ms task for handling packet
+	timings, DDM channel stalls/resets, and for handling transmitter parameter scaling. 
+	
+	If application is dual core, a 10ms task may be enabled to transmit Qi specific operating parameters as well as PRx specific information to the Main core via
+	MSI interface. This allows the Main core to share data or make decisions at the application level.  
+	
+	These tasks are called from main_tasks.c in their respective task handlers. To add additional tasks, simply insert the additional functions in this task 
+	handler file.  
+
+@defgroup qi-core-debug Qi Debug
+@ingroup qi-core
+@brief Handles debugging messages from PTx/PRx interactions
+@details
+	The Qi stack includes a debugging interface which can be used to display packet information, capture timing events on packets, capture if illegal or 
+	propriatery packets were received, and display packets sent to reciever on the console. All packets are time stamped with ~1ms accuracy giving designers 
+	ability to capture events between the transmitter and receiver. 
+	
+	The debugging interface also captures transmitter timeout events, transmitter operating status (rail voltage, power, etc.) with each CE/RP packet, open 
+	air Q and reference frequency (object detection), and other various data/status events. The debugging interface doesn't actually handle any of the printing
+	to console but does format and strings together for easily pointing to a handler for processing.	
+	
+	The Qi data macro #Qi_Debug_info in qi_debug.h need to point to a function(s) that handles printing string 
+	data. For Microchip wireless transmitter applications this is pointing to Dev_Term_Printf() which will call vsnprintf and setup the UART module. 
+	
+	The typical data packet will be printed as follows:
+	- Time stamp (hr:min:sec:msec)
+	- debug word 
+	- Qi state (P-ping, C-Id&Config, N-Negotiation, T-PowerTransfer)
+	- Active Coil
+	- Data Direction (R:PRx-to-PTx, T:PTx-to-PRx)
+	- Header Bytes
+	- Data payload
+	- Checksum
+	
+	For control error packets, the application appends transmitter specific details to the end of the message such as; inverter input 
+	voltage/current, coil voltage (and or current), inverter input power, and estimated power loss. This data is displayed in real units such as mV, mA, mW so
+	there is no need to convert the data manually.
+	
+	For receive power packets, the same data as in the control error packets is captured with the following additional details; received power, power loss, and 
+	calibrated power. Again all parameters are displayed in real units. 
+	
+	For application that are not rail control, system operating frequency, duty, and or phase may also be captured and printed with the control error packets to 
+	observe how the control system behaves. 
+	
+<p>
+    <img src="images/debugConsole.png" alt="" width="900"/>
+</p>
+<p><i> Example of Qi Debug Data on Console </i></p>
+
+
+@defgroup qi-core-init Qi System Init
+@ingroup qi-core
+@brief Qi system initialization
+@details   
+	Functions for Qi Stack initialization. 
+	
+	#Qi_Main_Init() is called during the initialization of application modules to prepare/setup the Qi stack for operation to initialize global/file scope 
+	variables, pre-initialize calibration data, setup Qi stack state-machine, and configure the peripherals used by the Qi stack. For dual core devices, this 
+	function includes initialization of the Main-to-Secondary core interface (MSI) and synchronization at start-up between the two cores via sharing FW 
+	versioning through MSI interface.
+	
+	<b>Note:</b> This function should be called before the application reads calibration data from flash otherwise default data will always be used.
+	
+	#Qi_Main_Task() is called in a background task of the scheduler and is used to call the main Qi stack state machine. The Qi stack can be enabled/disabled by 
+	the application at any time using provided APIs. By default, the state machine is disabled and Qi_Main_Statemachine_Start() needs to be called after application 
+	is up and running to start the stack. For dual core devices, a handler for starting/stopping the Qi state machine through the MSI interface using mailbox C
+	has been included. Writing to this mailbox on the Main core side (non-zero), will disable the state-machine. Writing a '0' to this mailbox once inactive, 
+	will restart the Qi stack. 
+	
+	
+@defgroup qi-core-version Qi FW Version
+@ingroup qi-core
+@brief QI Stack Firmware Version
+@details
+    Functions for Qi stack FW versioning.
+
+	The Qi FW stack is a standalone module (sub repo) whose versioning will differ from that of the application. In order to properly release / maintain this
+	stack firmware, a specific file versioning system has been deployed. This two decimal versioning (vX.Y) can be read by the application to track features /
+    bugs that may be applied to it.	
+	
+*/
+
+
